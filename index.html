@@ -4,154 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Heti Diák Riport</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; color: #333; }
-        .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #2c3e50; }
-        .search-box { display: flex; gap: 10px; margin-bottom: 25px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; text-transform: uppercase; }
-        button { padding: 12px 20px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
-        button:hover { background-color: #2980b9; }
-        .result-card { display: none; margin-top: 20px; }
-        .score-board { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 20px 0; }
-        .score-item { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; border-left: 4px solid #3498db; }
-        .score-number { font-size: 22px; font-weight: bold; color: #2c3e50; }
-        .chart-container { margin-top: 30px; }
-        .note-box { background: #eef9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #00a8ff; margin-top: 15px; }
-        .note-title { font-weight: bold; margin-bottom: 5px; color: #2c3e50; }
-        .error-msg { color: #e74c3c; font-weight: bold; text-align: center; margin-top: 15px; }
-    </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>📚 Heti Diák Riport</h1>
-    <div class="search-box">
-        <input type="text" id="studentCode" placeholder="Írd be a kódot (pl. VM26)...">
-        <button onclick="fetchReport()">Lekérdezés</button>
-    </div>
-
-    <div id="errorMsg" class="error-msg"></div>
-
-    <div id="resultCard" class="result-card">
-        <h2 id="studentName"></h2>
-        <p><strong>Utolsó frissítés:</strong> <span id="reportDate"></span></p>
-
-        <div class="score-board">
-            <div class="score-item"><div>🏠 Házi</div><div class="score-number" id="haziScore">-</div></div>
-            <div class="score-item"><div>📖 Elmélet</div><div class="score-number" id="elmeletScore">-</div></div>
-            <div class="score-item"><div>🙋‍♂️ Órai</div><div class="score-number" id="oraiScore">-</div></div>
-            <div class="score-item"><div>✏️ Teszt</div><div class="score-number" id="tesztScore">-</div></div>
-        </div>
-
-        <div class="note-box">
-            <div class="note-title">🏠 Házi & Elmélet értékelés:</div>
-            <p id="haziNote">-</p>
-        </div>
-
-        <div class="note-box" style="border-left-color: #2ecc71; background-color: #f0fff4;">
-            <div class="note-title">✏️ Órai munka & Teszt értékelés:</div>
-            <p id="tesztNote">-</p>
-        </div>
-
-        <div class="chart-container">
-            <h3>📈 Tesztek alakulása</h3>
-            <canvas id="tesztChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<script>
-    const SHEET_ID = '1zS0yDwqOhtmTC9tPU08LpXiNGcWqly8Ut_J-CkZz1Cc';
-    const CSV_URL = https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv;
-
-    let myChart = null;
-
-    async function fetchReport() {
-        const inputCode = document.getElementById('studentCode').value.trim().toUpperCase();
-        const errorDiv = document.getElementById('errorMsg');
-        const resultCard = document.getElementById('resultCard');
+    <div style="max-width: 500px; margin: 50px auto; font-family: sans-serif;">
+        <h2>Diák Riport Lekérdezés</h2>
         
-        errorDiv.innerText = '';
-        resultCard.style.display = 'none';
+        <!-- Input mező a kódnak -->
+        <input type="text" id="studentCode" placeholder="Írd be a kódot (pl. VM26)" style="padding: 10px; font-size: 16px; text-transform: uppercase;">
+        
+        <!-- Lekérdezés gomb -->
+        <button onclick="fetchReport()" style="padding: 10px 20px; font-size: 16px; cursor: pointer;">Lekérdezés</button>
 
-        if(!inputCode) {
-            errorDiv.innerText = 'Kérlek írd be a diák kódját!';
-            return;
+        <!-- Eredményeket megjelenítődoboz -->
+        <div id="output" style="margin-top: 20px; font-weight: bold;"></div>
+    </div>
+
+    <script>
+        // Itt fogjuk lépésről lépésre felépíteni a JavaScript logikát
+        function fetchReport() {
+            const code = document.getElementById('studentCode').value.trim();
+            console.log("Keresett kód:", code);
+            document.getElementById('output').innerText = "Keresés alatt: " + code;
         }
-
-        try {
-            const response = await fetch(CSV_URL);
-            if (!response.ok) throw new Error('Nem sikerült elérni a Google Táblázatot.');
-            
-            const data = await response.text();
-            
-            const rows = data.split('\n').map(row => {
-                return row.split(/,(?=(?:(?:[^"]"){2})[^"]*$)/).map(cell => cell.replace(/^"\vert{}"$/g, '').trim());
-            });
-
-            const studentRows = rows.filter(r => r[0] && r[0].toUpperCase() === inputCode);
-
-            if(studentRows.length === 0) {
-                errorDiv.innerText = Nem található diák ezzel a kóddal: "${inputCode}";
-                return;
-            }
-
-            const latest = studentRows[studentRows.length - 1];
-
-            function formatScore(val) {
-                if (!val || val === '-' || val === '') return 'Nem volt';
-                return val + ' / 10';
-            }
-
-            document.getElementById('studentName').innerText = latest[1] || 'Név nélkül';
-            document.getElementById('reportDate').innerText = latest[2] || '-';
-            document.getElementById('haziScore').innerText = formatScore(latest[3]);
-            document.getElementById('elmeletScore').innerText = formatScore(latest[4]);
-            document.getElementById('oraiScore').innerText = formatScore(latest[5]);
-            document.getElementById('tesztScore').innerText = formatScore(latest[6]);
-            
-            document.getElementById('haziNote').innerText = latest[7] || 'Nincs külön megjegyzés.';
-            document.getElementById('tesztNote').innerText = latest[8] || 'Nincs külön megjegyzés.';
-
-            resultCard.style.display = 'block';
-
-            const validTestRows = studentRows.filter(r => r[6] && r[6] !== '-' && !isNaN(parseFloat(r[6])));
-            const dates = validTestRows.map(r => r[2]);
-            const testScores = validTestRows.map(r => parseFloat(r[6]));
-
-            renderChart(dates, testScores);
-
-        } catch (error) {
-            errorDiv.innerText = 'Hiba történt az adatok letöltésekor.';
-            console.error(error);
-        }
-    }
-
-    function renderChart(labels, data) {
-        const ctx = document.getElementById('tesztChart').getContext('2d');
-        if(myChart) myChart.destroy();
-
-        myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Teszt eredmények',
-                    data: data,
-                    borderColor: '#2ecc71',
-                    backgroundColor: 'rgba(46, 204, 113, 0.2)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                scales: { y: { min: 0, max: 10 } }
-            }
-        });
-    }
-</script>
+    </script>
 
 </body>
 </html>
