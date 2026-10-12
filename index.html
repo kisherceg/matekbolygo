@@ -60,8 +60,8 @@
 </div>
 
 <script>
-    // Cseréld ki ezt a saját Google Sheet azonosítódra!
-    const SHEET_ID = '1zS0yDwqOhtmTC9tPU08LpXiNGcWqIy8Ut_J-CkZz1Cc';
+    // Írd ide a saját Google Sheet azonosítódat!
+    const SHEET_ID = '1zS0yDwqOhtmTC9tPU08LpXiNGcWqly8Ut_J-CkZz1Cc';
     const CSV_URL = https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv;
 
     let myChart = null;
@@ -84,19 +84,28 @@
 
             const latest = studentRows[studentRows.length - 1];
 
+            // Segédfüggvény a pontszámok kulturált megjelenítésére (ha '-', akkor azt írja ki, ha szám, akkor / 10)
+            function formatScore(val) {
+                if (!val || val === '-' || val === '') return 'Nem volt';
+                return val + ' / 10';
+            }
+
             document.getElementById('studentName').innerText = latest[1];
             document.getElementById('reportDate').innerText = latest[2];
-            document.getElementById('haziScore').innerText = latest[3] + ' / 10';
-            document.getElementById('elmeletScore').innerText = latest[4] + ' / 10';
-            document.getElementById('oraiScore').innerText = latest[5] + ' / 10';
-            document.getElementById('tesztScore').innerText = latest[6] + ' / 10';
+            document.getElementById('haziScore').innerText = formatScore(latest[3]);
+            document.getElementById('elmeletScore').innerText = formatScore(latest[4]);
+            document.getElementById('oraiScore').innerText = formatScore(latest[5]);
+            document.getElementById('tesztScore').innerText = formatScore(latest[6]);
+            
             document.getElementById('haziNote').innerText = latest[7] || 'Nincs külön megjegyzés.';
             document.getElementById('tesztNote').innerText = latest[8] || 'Nincs külön megjegyzés.';
 
             document.getElementById('resultCard').style.display = 'block';
 
-            const dates = studentRows.map(r => r[2]);
-            const testScores = studentRows.map(r => parseFloat(r[6]));
+            // Diagram előkészítés: csak azokat a teszteket vesszük figyelembe, ahol volt szám (nem '-')
+            const validTestRows = studentRows.filter(r => r[6] && r[6] !== '-' && !isNaN(parseFloat(r[6])));
+            const dates = validTestRows.map(r => r[2]);
+            const testScores = validTestRows.map(r => parseFloat(r[6]));
 
             renderChart(dates, testScores);
 
