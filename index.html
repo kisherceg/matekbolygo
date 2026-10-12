@@ -10,7 +10,7 @@
         .container { max-width: 700px; margin: auto; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h1 { text-align: center; color: #2c3e50; }
         .search-box { display: flex; gap: 10px; margin-bottom: 25px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 16px; text-transform: uppercase; }
         button { padding: 12px 20px; background-color: #3498db; color: white; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; }
         button:hover { background-color: #2980b9; }
         .result-card { display: none; margin-top: 20px; }
@@ -20,6 +20,7 @@
         .chart-container { margin-top: 30px; }
         .note-box { background: #eef9ff; padding: 15px; border-radius: 8px; border-left: 4px solid #00a8ff; margin-top: 15px; }
         .note-title { font-weight: bold; margin-bottom: 5px; color: #2c3e50; }
+        .error-msg { color: #e74c3c; font-weight: bold; text-align: center; margin-top: 15px; }
     </style>
 </head>
 <body>
@@ -27,9 +28,11 @@
 <div class="container">
     <h1>📚 Heti Diák Riport</h1>
     <div class="search-box">
-        <input type="text" id="studentCode" placeholder="Írd be a gyermek kódját...">
+        <input type="text" id="studentCode" placeholder="Írd be a kódot (pl. VM26)...">
         <button onclick="fetchReport()">Lekérdezés</button>
     </div>
+
+    <div id="errorMsg" class="error-msg"></div>
 
     <div id="resultCard" class="result-card">
         <h2 id="studentName"></h2>
@@ -60,38 +63,53 @@
 </div>
 
 <script>
-    // Írd ide a saját Google Sheet azonosítódat!
+    // A te Google Sheet azonosítód
     const SHEET_ID = '1zS0yDwqOhtmTC9tPU08LpXiNGcWqly8Ut_J-CkZz1Cc';
     const CSV_URL = https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv;
 
     let myChart = null;
 
     async function fetchReport() {
-        const inputCode = document.getElementById('studentCode').value.trim();
-        if(!inputCode) return alert('Kérlek írd be a kódot!');
+        const inputCode = document.getElementById('studentCode').value.trim().toUpperCase();
+        const errorDiv = document.getElementById('errorMsg');
+        const resultCard = document.getElementById('resultCard');
+        
+        errorDiv.innerText = '';
+        resultCard.style.display = 'none';
+
+        if(!inputCode) {
+            errorDiv.innerText = 'Kérlek írd be a diák kódját!';
+            return;
+        }
 
         try {
             const response = await fetch(CSV_URL);
-            const data = await response.text();
-            const rows = data.split('\n').map(row => row.split(',').map(cell => cell.replace(/"/g, '').trim()));
+            if (!response.ok) throw new Error('Nem sikerült elérni a Google Táblázatot.');
             
-            const studentRows = rows.filter(r => r[0] === inputCode);
+            const data = await response.text();
+            
+            // Sorokra bontás és idézőjelek eltávolítása
+            const rows = data.split('\n').map(row => {
+                return row.split(/,(?=(?:(?:[^"]"){2})[^"]*$)/).map(cell => cell.replace(/^"\vert{}"$/g, '').trim());
+            });
+
+            // Szűrés a megadott kódra (az első oszlop alapján, kis/nagybetű függetlenül)
+            const studentRows = rows.filter(r => r[0] && r[0].toUpperCase() === inputCode);
 
             if(studentRows.length === 0) {
-                alert('Nem található diák ezzel a kóddal!');
+                errorDiv.innerText = Nem található diák ezzel a kóddal: "${inputCode}";
                 return;
             }
 
             const latest = studentRows[studentRows.length - 1];
 
-            // Segédfüggvény a pontszámok kulturált megjelenítésére (ha '-', akkor azt írja ki, ha szám, akkor / 10)
             function formatScore(val) {
                 if (!val || val === '-' || val === '') return 'Nem volt';
                 return val + ' / 10';
             }
 
-            document.getElementById('studentName').innerText = latest[1];
-            document.getElementById('reportDate').innerText = latest[2];
+            document.getElementById('studentName').innerText = latest[1] || 'Név nélkül';
+            document.getElementById('reportDate').innerText = latest[2] || '-';
             document.getElementById('haziScore').innerText = formatScore(latest[3]);
             document.getElementById('elmeletScore').innerText = formatScore(latest[4]);
             document.getElementById('oraiScore').innerText = formatScore(latest[5]);
@@ -100,9 +118,9 @@
             document.getElementById('haziNote').innerText = latest[7] || 'Nincs külön megjegyzés.';
             document.getElementById('tesztNote').innerText = latest[8] || 'Nincs külön megjegyzés.';
 
-            document.getElementById('resultCard').style.display = 'block';
+            resultCard.style.display = 'block';
 
-            // Diagram előkészítés: csak azokat a teszteket vesszük figyelembe, ahol volt szám (nem '-')
+            // Diagram adatok
             const validTestRows = studentRows.filter(r => r[6] && r[6] !== '-' && !isNaN(parseFloat(r[6])));
             const dates = validTestRows.map(r => r[2]);
             const testScores = validTestRows.map(r => parseFloat(r[6]));
@@ -110,7 +128,7 @@
             renderChart(dates, testScores);
 
         } catch (error) {
-            alert('Hiba történt az adatok lekérésekor.');
+            errorDiv.innerText = 'Hiba történt az adatok letöltésekor. Ellenőrizd a kapcsolatot!';
             console.error(error);
         }
     }
