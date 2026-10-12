@@ -63,7 +63,6 @@
 </div>
 
 <script>
-    // A te Google Sheet azonosítód
     const SHEET_ID = '1zS0yDwqOhtmTC9tPU08LpXiNGcWqly8Ut_J-CkZz1Cc';
     const CSV_URL = https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv;
 
@@ -88,12 +87,10 @@
             
             const data = await response.text();
             
-            // Sorokra bontás és idézőjelek eltávolítása
             const rows = data.split('\n').map(row => {
                 return row.split(/,(?=(?:(?:[^"]"){2})[^"]*$)/).map(cell => cell.replace(/^"\vert{}"$/g, '').trim());
             });
 
-            // Szűrés a megadott kódra (az első oszlop alapján, kis/nagybetű függetlenül)
             const studentRows = rows.filter(r => r[0] && r[0].toUpperCase() === inputCode);
 
             if(studentRows.length === 0) {
@@ -120,7 +117,6 @@
 
             resultCard.style.display = 'block';
 
-            // Diagram adatok
             const validTestRows = studentRows.filter(r => r[6] && r[6] !== '-' && !isNaN(parseFloat(r[6])));
             const dates = validTestRows.map(r => r[2]);
             const testScores = validTestRows.map(r => parseFloat(r[6]));
@@ -128,7 +124,7 @@
             renderChart(dates, testScores);
 
         } catch (error) {
-            errorDiv.innerText = 'Hiba történt az adatok letöltésekor. Ellenőrizd a kapcsolatot!';
+            errorDiv.innerText = 'Hiba történt az adatok letöltésekor.';
             console.error(error);
         }
     }
